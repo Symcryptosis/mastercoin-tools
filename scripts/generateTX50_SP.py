@@ -25,6 +25,10 @@ JSON = sys.stdin.readlines()
 
 listOptions = json.loads(str(''.join(JSON)))
 
+#Python environment issue, Some hex encoding doesn't respect this value properly
+#Use either 21 or 41  (change if first tx hex created is invalid)
+HEXSPACE='21'
+
 #sort out whether using local or remote API
 USER=getpass.getuser()
 
@@ -309,14 +313,14 @@ for i in range(total_outs):
 #DEBUG print ordered_packets
 
 for i in range(total_outs):
-    hex_string = "5141" + pubkey
+    hex_string = "51" + HEXSPACE + pubkey
     asm_string = "1 " + pubkey
     addresses = [ pybitcointools.pubkey_to_address(pubkey)]
     n_count = len(validnextoutputs)+i
     total_sig_count = 1
     #DEBUG print [i,'added string', ordered_packets[i]]
     for packet in ordered_packets[i]:
-        hex_string = hex_string + "21" + packet.lower() 
+        hex_string = hex_string + HEXSPACE + packet.lower() 
         asm_string = asm_string + " " + packet.lower()
         addresses.append(pybitcointools.pubkey_to_address(packet))
         total_sig_count = total_sig_count + 1
