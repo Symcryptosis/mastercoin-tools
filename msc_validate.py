@@ -12,6 +12,7 @@
 
 import os
 import sys
+import pprint
 from optparse import OptionParser
 from msc_utils_validating import *
 
@@ -755,7 +756,11 @@ def write_back_modified_tx():
             # remove update fs marker
             del tx_dict[k][n]['update_fs']
             # save back to filesystem
-            atomic_json_dump(tx_dict[k], 'tx/'+k+'.json', add_brackets=False)
+
+            if msc_globals.D != None:
+                pass
+            else:
+                atomic_json_dump(tx_dict[k], 'tx/'+k+'.json', add_brackets=False)
 
 # create offers json
 def update_offers():
@@ -765,7 +770,11 @@ def update_offers():
         for b_hash in offers_dict[tx_hash]:
             offers.append(tx_dict[b_hash][-1])
         # write updated offers
-        atomic_json_dump(offers, 'offers/offers-'+tx_hash+'.json', add_brackets=False)
+        if msc_globals.D != None:
+            if msc_globals.O != None:
+                pprint.pprint(offers)
+        else:
+            atomic_json_dump(offers, 'offers/offers-'+tx_hash+'.json', add_brackets=False)
 
 # create prop json
 def update_properties():
@@ -775,7 +784,12 @@ def update_properties():
         for prop_hash in properties_dict[prop_id]:
             properties.append(tx_dict[prop_hash][-1])
         # write updated props
-        atomic_json_dump(properties, 'properties/properties-'+prop_id+'.json', add_brackets=False)
+
+        if msc_globals.D != None:
+            if msc_globals.P != None:
+                pprint.pprint(properties)
+        else:
+            atomic_json_dump(properties, 'properties/properties-'+prop_id+'.json', add_brackets=False)
 
 def update_bitcoin_balances():
     if msc_globals.b == True:
@@ -911,7 +925,14 @@ def generate_api_jsons():
             addr_dict_api[coins_dict[c]]=sub_dict
         balances_list.append({"symbol":"BTC","value":from_satoshi(addr_dict[addr]['Bitcoin']['balance'])})
         addr_dict_api['balance']=balances_list
-        atomic_json_dump(addr_dict_api, 'addr/'+addr+'.json', add_brackets=False)
+
+        if msc_globals.D != None:
+            if msc_globals.A != None:
+                pprint.pprint(addr_dict_api)
+            else:
+                return True
+        else:
+            atomic_json_dump(addr_dict_api, 'addr/'+addr+'.json', add_brackets=False)
 
     # create files for msc and files for test_msc
     for k in tx_dict.keys():
@@ -1557,7 +1578,7 @@ def check_mastercoin_transaction(t, index=-1):
                     update_tx_dict(t['tx_hash'], bitcoin_required=formatted_decimal(bitcoin_required), \
                         sell_offer_txid=sell_offer_tx['tx_hash'], \
                         formatted_price_per_coin=sell_offer_tx['formatted_price_per_coin'], \
-                        formatted_amount_accepted=str(amount_accepted), \
+                        formatted_amount_accepted=formatted_decimal(amount_accepted), \
                         formatted_amount_bought='0.0', btc_offer_txid='unknown')
 
                     # heavy debug
@@ -1566,7 +1587,7 @@ def check_mastercoin_transaction(t, index=-1):
 
                     if amount_accepted > 0: # ignore 0 or negative accepts
                         # update sell accept
-                        update_tx_dict(t['tx_hash'], formatted_amount_accepted=amount_accepted, payment_done=False, payment_expired=False)
+                        update_tx_dict(t['tx_hash'], formatted_amount_accepted=formatted_decimal(amount_accepted), payment_done=False, payment_expired=False)
                         debug('add alarm for accept '+str(t))
                         add_alarm(t['tx_hash'])
 
@@ -1662,6 +1683,10 @@ def check_mastercoin_transaction(t, index=-1):
                         #earlybird_bonus = t['earlybirdBonus']
                         #percentage_for_issuer = t['percentageForIssuer']
                         
+                        #check and see if a coin exists with the same name
+                        if prop_name in property_type_dict:
+                            prop_name += '-' + str(prop_id)
+                            
                         # add symbol to dict
                         property_type_dict[prop_name]=property_type
                         coins_dict[prop_name]=str(prop_id)
@@ -1711,16 +1736,31 @@ def validate():
 
     # parse command line arguments
     parser = OptionParser("usage: %prog [options]")
+    parser.add_option("-s", "--silent", action="store_true",dest='silent_mode', default=False,
+                        help="silence info logging")
     parser.add_option("-d", "--debug", action="store_true",dest='debug_mode', default=False,
                         help="turn debug mode on")
     parser.add_option("-b", "--skip-balance", action="store_true",dest='skip_balance', default=False,
                         help="skip balance retrieval")
+    parser.add_option("-D", "--dump-data", action="store",dest='dump_data',
+                        help="dump of state at particular block")
+    parser.add_option("-P", "--dump-prop", action="store_true",dest='dump_properties', default=None,
+                        help="dump of properties at particular block")
+    parser.add_option("-O", "--dump-offer", action="store_true",dest='dump_offers', default=None,
+                        help="dump of offers at particular block")
+    parser.add_option("-A", "--dump-addr", action="store_true",dest='dump_addresses', default=None,
+                        help="dump of addresses at particular block")
 
     (options, args) = parser.parse_args()
     msc_globals.init()
+    msc_globals.s=options.silent_mode
     msc_globals.d=options.debug_mode
-    msc_globals.b=options.skip_balance
+    msc_globals.b=options.skip_balance or options.dump_data != None
 
+    msc_globals.D=options.dump_data 
+    msc_globals.P=options.dump_properties 
+    msc_globals.O=options.dump_offers
+    msc_globals.A=options.dump_addresses
     # for heavy debugging
     msc_globals.heavy_debug = True
 
@@ -1754,11 +1794,18 @@ def validate():
 
     # go over all tx
     for t in sorted_tx_list:
-        # check alarm (verify accept offers get payment in time)
+
+        # get current block from first tx
         try:
             current_block=int(t['block'])
         except ValueError,e:
             error('invalid block number during validation: '+t['block'])
+
+        # break if we encounter the block to dump data on
+        if msc_globals.D != None and current_block > int(msc_globals.D):
+            break
+
+        # check alarm (verify accept offers get payment in time)
         check_alarm(t, last_block, current_block)
         
         if current_block > 292636 and t['tx_hash'] != 'fake': #first SP transaction

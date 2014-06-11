@@ -40,6 +40,7 @@ def parse():
     (options, args) = parser.parse_args()
     msc_globals.d=options.debug_mode
     single_tx=options.single_tx
+    archive=options.archive
     requested_block_height=options.starting_block_height
 
     # show debug on
@@ -91,15 +92,14 @@ def parse():
 
     # to catch chain reorgs, check 5 blocks back
     starting_block_height = int(starting_block_height) - 5
-
-    archive=options.archive
-
     info('starting parsing at block '+str(starting_block_height))
 
     if single_tx == None:
         # get all tx of exodus address
         history=get_history(exodus_address)
         history.sort(key=output_height)
+        # Oddly enough this next print statement corrects the parsing-behind bug
+        print "Last 5 transactions of Exodus", history[-5:]
     else:
         # build fake history of length 1 (debug purposes)
         json_tx=get_tx(single_tx)

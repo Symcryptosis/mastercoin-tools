@@ -24,7 +24,7 @@ exodus_bootstrap_orig_deadline=1377993600
 exodus_bootstrap_deadline=1377993874
 seconds_in_one_year=31556926
 multisig_disabled=False
-dust_limit=5555
+dust_limit=5757
 MAX_PUBKEY_IN_BIP11=3
 MAX_COMMAND_TRIES=3
 features_enable_dict={'distributed exchange':290630}
@@ -207,25 +207,12 @@ def parse_simple_basic(tx, tx_hash='unknown', after_bootstrap=True):
     # collect all "from addresses" (normally only a single one)
     from_address=''
     try:
-        inputs=json_tx['inputs']
-        inputs_values_dict={}
-        for i in inputs:
-            input_value=get_value_from_output(i['previous_output'])
-            if input_value == None:
-                error('failed get_value_from_output')
-            input_address=i['address']
-            if inputs_values_dict.has_key(input_address):
-                inputs_values_dict[input_address]+=int(input_value)
-            else:
-                inputs_values_dict[input_address]=int(input_value)
-
         # the from address is the one with the highest value
-        from_address=max(inputs_values_dict, key=inputs_values_dict.get)
+        from_address=select_input_reference(json_tx['inputs'])
 
         if from_address == None:
             info('invalid from address (address with largest value is None) at tx '+tx_hash)
             return {'invalid':(True,'address with largest value is None'), 'tx_hash':tx_hash}
-
 
         #######################################################################
         # follow Class A P&D https://github.com/mastercoin-MSC/spec/issues/29 #
@@ -292,67 +279,102 @@ def parse_simple_basic(tx, tx_hash='unknown', after_bootstrap=True):
         info('invalid mastercoin tx ('+str(e)+') at tx '+tx_hash)
         return {'invalid':(True,'bad parsing'), 'tx_hash':tx_hash}
 
+# only pay-to-pubkey-hash inputs are allowed
+# the sender is largest contributor of the transaction
+def select_input_reference(inputs):
+    inputs_values_dict={}
+    for i in inputs:
+        prev_output=get_vout_from_output(i['previous_output'])
+        # skip, if input is not usable
+        if prev_output==None:
+            continue
+        # skip, if input is not pay-to-pubkey-hash
+        if not is_script_paytopubkeyhash(prev_output['script']):
+            return None
+        input_value=prev_output['value']
+        input_address=i['address']
+        if inputs_values_dict.has_key(input_address):
+            inputs_values_dict[input_address]+=int(input_value)
+        else:
+            inputs_values_dict[input_address]=int(input_value)
+    # no valid input found
+    if len(inputs_values_dict)==0:
+        return None
+    # the input reference is the one with the highest value
+    from_address=max(inputs_values_dict, key=inputs_values_dict.get)
+    return from_address
+
+# only non-exodus, pay-to-pubkey-hash outputs are considered
+# other output types are ignores, sender may not be the receiver
+# the receiver is derived from the last remaining output
+def select_receiver_reference(input_addr, outputs):
+    to_address='unknown'
+    sender_references=0    
+    # filter outputs to consider only pay-to-pubkey-hash outputs
+    potential_recipients=[]
+    for o in outputs:
+        if is_script_paytopubkeyhash(o['script']):
+            address=o['address']
+            # skip exodus outputs
+            if address==exodus_address:
+                continue
+            # count outputs to sender
+            if address==input_addr:
+                sender_references+=1
+            potential_recipients.append(address)
+    # recipient is last output, but first reference to sender may be skipped
+    remaining=len(potential_recipients)  
+    if remaining==1 or sender_references>1 or remaining>0 and potential_recipients[-1]!=input_addr:
+        to_address=potential_recipients[-1]
+    # strip change output
+    elif remaining>1 and potential_recipients[-1]==input_addr:
+        to_address=potential_recipients[-2]
+    return to_address
+
 def get_obfus_str_list(address, length):
-       obfus_str_list=[]
-       obfus_str_list.append(get_sha256(address)) # 1st obfus is simple sha256
-       for i in range(length):
-           if i<length-1: # one less obfus str is needed (the first was not counted)
-               obfus_str_list.append(get_sha256(obfus_str_list[i].upper())) # i'th obfus is sha256 of upper prev
-       return obfus_str_list
+    obfus_str_list=[]
+    obfus_str_list.append(get_sha256(address)) # 1st obfus is simple sha256
+    for i in range(length):
+        if i<length-1: # one less obfus str is needed (the first was not counted)
+            obfus_str_list.append(get_sha256(obfus_str_list[i].upper())) # i'th obfus is sha256 of upper prev
+    return obfus_str_list
 
 def parse_multisig(tx, tx_hash='unknown'):
     if multisig_disabled:
         info('multisig is disabled: '+tx_hash)
-        return {}
+        return {'invalid':(True,'multisig is disabled'), 'tx_hash':tx_hash}
     parsed_json_tx=get_json_tx(tx)
     parse_dict={}
-    input_addr=''
-    for i in parsed_json_tx['inputs']:
-        previous_output=i['previous_output']
-        if input_addr == '':
-            input_addr=get_address_from_output(previous_output)
-        else:
-            if get_address_from_output(previous_output) != input_addr:
-                info('Bad multiple inputs on: '+tx_hash)
-                return {'tx_hash':tx_hash, 'invalid':(True, 'Bad multiple inputs')}
+    
+    # the sender is largest contributor of the transaction
+    input_addr=select_input_reference(parsed_json_tx['inputs'])
+    
+    if input_addr == None:
+        info('invalid from address (address with largest value is None) or non-pay-to-pubkeyhash supplied at tx '+tx_hash)
+        return {'invalid':(True,'address with largest value is None or non-pay-to-pubkeyhash supplied'), 'tx_hash':tx_hash}
+                                      
+    # the receiver is not exodus and preferably not sender, not all tx types require a receiver
     all_outputs=parsed_json_tx['outputs']
-    (outputs_list_no_exodus, outputs_to_exodus, different_outputs_values, invalid)=examine_outputs(all_outputs, tx_hash, tx)
-    if invalid != None:
-        info(str(invalid[1])+' on '+tx_hash)
-        return {'tx_hash':tx_hash, 'invalid':invalid}
-        
-    tx_dust=outputs_to_exodus[0]['value']
-    dust_outputs=different_outputs_values[tx_dust]
-    to_address='unknown'
-    for o in dust_outputs: # assume the only other dust is to recipient
-        if o['address']!=exodus_address and o['address']!=None:
-            to_address=o['address']
-            if to_address[0] == '3': #P2SH
-                info('P2SH not implemented, see https://github.com/mastercoin-MSC/spec/issues/85, hash: '+tx_hash)
-                return {'tx_hash':tx_hash, 'invalid':(True, 'P2SH sending not supported')}
-            continue
+    to_address=select_receiver_reference(input_addr, all_outputs)
+    
+    # data packages are encoded in multisig outputs
+    potential_data_outputs=[output for output in all_outputs if is_script_multisig(output['script'])]
 
     data_script_list = []
-    for idx,o in enumerate(outputs_list_no_exodus):
+    for idx,o in enumerate(potential_data_outputs):
         if o['address']==None: # This should be the multisig
+            # extract obfuscated data packages
             script=o['script']
-            # verify that it is a multisig
-            if not script.endswith('checkmultisig'):
-                error('Bad multisig data script '+script)
             fields=script.split('[ ')
 
             # more sanity checks on BIP11
             max_pubkeys=int(fields[-1].split()[-2])
-            req_pubkeys=int(fields[0])
-            if req_pubkeys != 1:
-                info('error m-of-n with m different than 1 ('+str(req_pubkeys)+'). skipping tx '+tx_hash)
-                return {'tx_hash':tx_hash, 'invalid':(True, 'error m-of-n with m different than 1')}
-            if max_pubkeys < 2 or max_pubkeys > 3:
+            if max_pubkeys < 2 or max_pubkeys > MAX_PUBKEY_IN_BIP11:
                 info('error m-of-n with n out of range ('+str(max_pubkeys)+'). skipping tx '+tx_hash)
                 return {'tx_hash':tx_hash, 'invalid':(True, 'error m-of-n with n out of range')}
 
             # parse the BIP11 pubkey list
-            for i in range(MAX_PUBKEY_IN_BIP11-1):
+            for i in range(max_pubkeys-1):
                 index=i+2 # the index of the i'th pubkey
                 try:
                     data_script = fields[index].split(' ]')[0]
@@ -365,18 +387,11 @@ def parse_multisig(tx, tx_hash='unknown'):
             dataHex_deobfuscated_list=[]
             data_dict_list=[]
 
-            if input_addr == None:
-                info('none input address (BIP11 inputs are not supported yet)')
-                return {'tx_hash':tx_hash, 'invalid':(True, 'not supported input (BIP11/BIP16)')}
-
             list_length=len(data_script_list)
             obfus_str_list=get_obfus_str_list(input_addr, list_length)
 
             for i in range(list_length):
                 dataHex_deobfuscated_list.append(get_string_xor(data_script_list[i][2:-2],obfus_str_list[i][:62]).zfill(64)+'00')
-
-            # deobfuscated list is ready
-            #info(dataHex_deobfuscated_list)
 
             try:
                 data_dict=parse_data_script(dataHex_deobfuscated_list[0])
@@ -485,7 +500,7 @@ def parse_multisig(tx, tx_hash='unknown'):
                             parse_dict['formatted_fee']=bitcoin_dict['fee']
                         else:
                             if data_dict['transactionType'] == '0032' or data_dict['transactionType'] == '0033': # Smart Property
-                                if idx == len(outputs_list_no_exodus)-1: # we are on last output
+                                if idx == len(potential_data_outputs)-1: # we are on last output
                                     long_packet = ''
                                     for datahex in dataHex_deobfuscated_list:
                                         if len(datahex)<42:
@@ -599,12 +614,9 @@ def parse_multisig(tx, tx_hash='unknown'):
                                 else:
                                     return {'tx_hash':tx_hash, 'invalid':(True, 'non supported tx type '+data_dict['transactionType'])}
 
-        else: # not the multisig output
-            # the output with dust
-            parse_dict['to_address']=o['address']
-
-    if parse_dict == {}:
-        error('Bad parsing of multisig: '+tx_hash)
+    if parse_dict == {}: # no valid transaction data found
+        info('bad parsing of multisig data at tx '+tx_hash)
+        return {'invalid':(True,'bad parsing of multisig data'), 'tx_hash':tx_hash}
 
     parse_dict['from_address']=input_addr
     parse_dict['to_address']=to_address
@@ -617,6 +629,9 @@ def examine_outputs(outputs_list, tx_hash, raw_tx):
         outputs_to_exodus=[]
         different_outputs_values={}
         for o in outputs_list:
+            # ignore outputs which are not pay-to-pubkey-hash or multisig
+            if not (is_script_paytopubkeyhash(o['script']) or is_script_multisig(o['script'])):
+                continue
             if o['address']!=exodus_address:
                 outputs_list_no_exodus.append(o)
             else:
@@ -637,10 +652,7 @@ def examine_outputs(outputs_list, tx_hash, raw_tx):
                 if i['address']==exodus_address:
                     from_exodus=True
                     break
-            if not from_exodus:
-                info("invalid tx with multiple 1EXoDus outputs not from 1EXoDus: "+tx_hash)
-                return (None, None, None, (True,'multiple 1EXoDus outputs not from 1EXoDus'))
-            else: # 1EXoDus has sent this tx
+            if from_exodus: # 1EXoDus has sent this tx
                 # Maximal 2 values are valid (dust and change)
                 if len(different_outputs_values.keys()) > 2:
                     error("tx sent by exodus with more than 2 different values: "+tx_hash)
@@ -670,24 +682,3 @@ def examine_outputs(outputs_list, tx_hash, raw_tx):
                     outputs_list_no_exodus+=[dust_outputs_to_exodus[0]]
                     outputs_to_exodus=non_dust_outputs_to_exodus+dust_outputs_to_exodus[1:]
         return (outputs_list_no_exodus, outputs_to_exodus, different_outputs_values, None)
-
-def get_tx_method(tx, tx_hash='unknown'): # multisig_simple, multisig, multisig_invalid, basic
-        json_tx=get_json_tx(tx)
-        outputs_list=json_tx['outputs']
-        (outputs_list_no_exodus, outputs_to_exodus, different_outputs_values, invalid)=examine_outputs(outputs_list, hx_hash, tx)
-
-        num_of_outputs=len(outputs_list)
-
-        # check if basic or multisig
-        is_basic=True
-        for o in outputs_list:
-            if is_script_multisig(o['script']):
-                if num_of_outputs == 2:
-                    return 'multisig_simple'
-                else:
-                    if num_of_outputs > 2:
-                        return 'multisig'
-                    else:
-                        return 'multisig_invalid'
-        # all the rest, which includes exodus and invalids are considered as basic
-        return 'basic'
