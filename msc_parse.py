@@ -131,8 +131,9 @@ def parse():
 
     # go over transaction from all history of 1EXoDus address
     last_block=0
+
+    info('Parsing transactions...')
     for tx_dict in history:
-        info('Parsing transaction '+tx_dict['output'].split(':')[0]+'...')
         value=tx_dict['value']
         if starting_block_height != None:
             current_block=tx_dict['output_height']
