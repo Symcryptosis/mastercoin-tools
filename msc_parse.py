@@ -22,7 +22,7 @@ def parse():
     ######################################
     # reading and setting options values #
     ######################################
-
+    info('Initializing globals...')
     msc_globals.init()
 
     parser = OptionParser("usage: %prog [options]")
@@ -48,6 +48,7 @@ def parse():
         debug('debug is on')
 
     # don't bother parsing if no new block was generated since last validation
+    info('Determining last validated block...')
     last_validated_block=0
     try:
         f=open(LAST_VALIDATED_BLOCK_NUMBER_FILE,'r')
@@ -95,6 +96,7 @@ def parse():
     info('starting parsing at block '+str(starting_block_height))
 
     if single_tx == None:
+        info('Retreiving history and sorting data...')
         # get all tx of exodus address
         history=get_history(exodus_address)
         history.sort(key=output_height)
@@ -129,6 +131,8 @@ def parse():
 
     # go over transaction from all history of 1EXoDus address
     last_block=0
+
+    info('Parsing transactions...')
     for tx_dict in history:
         value=tx_dict['value']
         if starting_block_height != None:
@@ -272,6 +276,7 @@ def parse():
         if single_tx == None and block != None:
             msc_globals.last_block=block
 
+    info('Finished, dumping last_block and revision.json...')
     rev=get_revision_dict(last_block, options.repository_path)
     atomic_json_dump(rev, 'www/revision.json', add_brackets=False)
 
