@@ -18,6 +18,7 @@ import msc_globals
 from msc_utils_bitcoin import *
 
 MAX_COMMAND_TRIES=7
+TIMEOUT='timeout -s 9 60 ' 
 
 def get_last_height():
     out, err = run_command("sx fetch-last-height")
@@ -112,7 +113,7 @@ def get_tx_index(tx_hash):
             return (-1,-1)
 
 def get_json_history(addr):
-    out, err = run_command("timeout -s 9 60 sx history -j "+addr)
+    out, err = run_command(TIMEOUT + "sx history -j "+addr)
     if err != None:
         return err
     else:
@@ -219,7 +220,7 @@ def get_utxo(addr, value):
         return out
 
 def get_balance(addrs):
-    out, err = run_command("sx balance -j "+addrs)
+    out, err = run_command(TIMEOUT+"sx balance -j "+addrs)
     if err != None:
         return err
     else:
