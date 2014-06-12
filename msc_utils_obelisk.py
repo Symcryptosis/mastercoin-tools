@@ -112,7 +112,7 @@ def get_tx_index(tx_hash):
             return (-1,-1)
 
 def get_json_history(addr):
-    out, err = run_command("sx history -j "+addr)
+    out, err = run_command("timeout -s 9 60 sx history -j "+addr)
     if err != None:
         return err
     else:
