@@ -18,9 +18,10 @@ import msc_globals
 from msc_utils_bitcoin import *
 
 MAX_COMMAND_TRIES=7
+TIMEOUT='timeout -s 9 60 ' 
 
 def get_last_height():
-    out, err = run_command("sx fetch-last-height")
+    out, err = run_command(TIMEOUT+"sx fetch-last-height")
     if err != None:
         return err
     else:
@@ -36,11 +37,11 @@ def get_last_height():
 def get_block_timestamp(height):
     if msc_globals.s == False:
         print height
-    raw_block, err = run_command("sx fetch-block-header "+str(height))
+    raw_block, err = run_command(TIMEOUT+"sx fetch-block-header "+str(height))
     if err != None or raw_block == None:
         return (None, err)
     else:
-        block_details, err = run_command("sx showblkhead", raw_block)
+        block_details, err = run_command(TIMEOUT+"sx showblkhead", raw_block)
         if err != None or block_details == None:
             return (None, err)
         else:
@@ -54,7 +55,7 @@ def get_block_timestamp(height):
                     return (None, "empty block details")
 
 def get_raw_tx(tx_hash):
-    out, err = run_command("sx fetch-transaction "+tx_hash)
+    out, err = run_command(TIMEOUT+"sx fetch-transaction "+tx_hash)
     if err != None:
         return err
     else:
@@ -69,7 +70,7 @@ def get_json_tx(raw_tx, tx_hash='unknown hash'):
             error('assertion failed, no tx_hash provided')
     parsed_json_tx=None
     for i in range(MAX_COMMAND_TRIES): # few tries
-        json_tx, err = run_command("sx showtx -j", raw_tx)
+        json_tx, err = run_command(TIMEOUT+"sx showtx -j", raw_tx)
         if err != None or json_tx == None:
             if i == MAX_COMMAND_TRIES:
                 error(str(json_tx)+' '+str(tx_hash))
@@ -87,7 +88,7 @@ def get_tx(tx_hash):
     return get_json_tx(raw_tx, tx_hash)
 
 def get_tx_index(tx_hash):
-    out, err = run_command("sx fetch-transaction-index "+tx_hash)
+    out, err = run_command(TIMEOUT+"sx fetch-transaction-index "+tx_hash)
     if err != None:
         info(err)
         return (-1, -1)
@@ -112,7 +113,7 @@ def get_tx_index(tx_hash):
             return (-1,-1)
 
 def get_json_history(addr):
-    out, err = run_command("sx history -j "+addr)
+    out, err = run_command(TIMEOUT + "sx history -j "+addr)
     if err != None:
         return err
     else:
@@ -197,14 +198,14 @@ def get_vout_from_output(tx_and_number):
     return output
 
 def get_pubkey(addr):
-    out, err = run_command("sx get-pubkey "+addr)
+    out, err = run_command(TIMEOUT+"sx get-pubkey "+addr)
     if err != None:
         return err
     else:
         return out.strip('\n')
 
 def pubkey(key):
-    out, err = run_command("sx pubkey ",key)
+    out, err = run_command(TIMEOUT+"sx pubkey ",key)
     # the only possible error is "Invalid private key."
     if out.strip('\n') == "Invalid private key.":
         return None
@@ -212,14 +213,14 @@ def pubkey(key):
         return out.strip('\n')
 
 def get_utxo(addr, value):
-    out, err = run_command("sx get-utxo "+addr+" "+str(value))
+    out, err = run_command(TIMEOUT+"sx get-utxo "+addr+" "+str(value))
     if err != None:
         return err
     else:
         return out
 
 def get_balance(addrs):
-    out, err = run_command("sx balance -j "+addrs)
+    out, err = run_command(TIMEOUT+"sx balance -j "+addrs)
     if err != None:
         return err
     else:
@@ -230,19 +231,19 @@ def get_balance(addrs):
         return parsed_json_balance
 
 def rawscript(script):
-    out, err = run_command("sx rawscript "+script)
+    out, err = run_command(TIMEOUT+"sx rawscript "+script)
     if err != None:
         return err
     else:
         return out.strip('\n')
 
 def mktx(inputs_outputs):
-    out, err = run_command("sx mktx "+inputs_outputs, None, True)
+    out, err = run_command(TIMEOUT+"sx mktx "+inputs_outputs, None, True)
     # ignore err
     return out
 
 def get_addr_from_key(key): # private or public key
-    out, err = run_command("sx addr ", key)
+    out, err = run_command(TIMEOUT+"sx addr ", key)
     return out.strip('\n')
 
 def sign(tx, priv_key, inputs):
@@ -259,9 +260,9 @@ def sign(tx, priv_key, inputs):
         # assumtion: that all inputs come from the same address (required in spec)
         n=0;
         for i in inputs:
-            signature=run_command('sx sign-input txfile.tx '+str(n)+' '+prevout_script, priv_key)[0].strip('\n')
+            signature=run_command(TIMEOUT+'sx sign-input txfile.tx '+str(n)+' '+prevout_script, priv_key)[0].strip('\n')
             signed_rawscript=rawscript('[ '+signature +' ] [ '+pubkey(priv_key)+' ]')
-            signed_tx=run_command('sx set-input txfile.tx '+str(n), signed_rawscript)
+            signed_tx=run_command(TIMEOUT+'sx set-input txfile.tx '+str(n), signed_rawscript)
             n+=1
             # replace the file with the signed one
             f=open('txfile.tx','w')
@@ -272,14 +273,14 @@ def sign(tx, priv_key, inputs):
     return signed_tx[0].strip('\n')
 
 def validate_sig(filename, index, script_code, signature):
-    out, err = run_command('sx validsig '+filename+' '+str(index)+' '+script_code+' '+signature)
+    out, err = run_command(TIMEOUT+'sx validsig '+filename+' '+str(index)+' '+script_code+' '+signature)
     if err != None:
         return err
     else:
         return out
 
 def validate_tx(filename):
-    out, err = run_command('sx validtx ' + filename)
+    out, err = run_command(TIMEOUT+'sx validtx ' + filename)
     if err != None:
         return err
     else:
@@ -293,7 +294,7 @@ def validate_tx(filename):
             return out
 
 def send_tx(filename, host='localhost', port=8333):
-    out, err = run_command("sx sendtx "+filename+' '+host+' '+port)
+    out, err = run_command(TIMEOUT+"sx sendtx "+filename+' '+host+' '+port)
     if err != None:
         return err
     else:
@@ -301,7 +302,7 @@ def send_tx(filename, host='localhost', port=8333):
         return None
 
 def broadcast_tx(filename):
-    out, err = run_command("sx sendtx-obelisk " + filename)
+    out, err = run_command(TIMEOUT+"sx sendtx-obelisk " + filename)
     if err != None:
         return err
     else:
