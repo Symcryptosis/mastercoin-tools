@@ -1670,7 +1670,7 @@ def check_mastercoin_transaction(t, index=-1):
                                 return False 
 
                             deadline = int(t['deadline'])
-                            if deadline <= int(t['tx_time']):
+                            if deadline <= int(t['tx_time'][:-3]):
                                 mark_tx_invalid(tx_hash, 'cannot have deadline less than the current block')
                                 return False
 
