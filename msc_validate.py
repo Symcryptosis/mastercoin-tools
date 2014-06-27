@@ -1669,6 +1669,11 @@ def check_mastercoin_transaction(t, index=-1):
                                 mark_tx_invalid(tx_hash, 'desire non existing currency for fundraiser')
                                 return False 
 
+                            deadline = int(t['deadline'])
+                            if deadline <= int(t['tx_time']):
+                                mark_tx_invalid(tx_hash, 'cannot have deadline less than the current block')
+                                return False
+
                         #used later in validation
                         property_type = t['property_type']
                         prev_prop_id = int(t['previous_property_id'])
@@ -1679,7 +1684,7 @@ def check_mastercoin_transaction(t, index=-1):
                         #prop_data = t['propertyData']
 
                         num_prop = t['numberOfProperties']
-                        #deadline = t['deadline']
+
                         #earlybird_bonus = t['earlybirdBonus']
                         #percentage_for_issuer = t['percentageForIssuer']
                         
