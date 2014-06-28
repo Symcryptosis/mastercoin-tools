@@ -1198,7 +1198,7 @@ def check_mastercoin_transaction(t, index=-1):
                                 #for property_type 1(indivisible) note int type for calculation
                                 tokens_created=int(amount_transfer*10e-9*int(active_fundraiser['numberOfProperties'])*bonus_percentage)
                                 #add Z% of Y Tokens and assign to issuer
-                                tokens_percent_issuer=tokens_created*percentage_issuer 
+                                tokens_percent_issuer=int(tokens_created*percentage_issuer) 
                                 
                                 #for property_type 1 (non-divisible) use ints for calculating the amount_transfer
                                 update_addr_dict(from_addr, True,'Smart Property', c, balance=tokens_created, received=tokens_created, in_tx=active_fundraiser)
