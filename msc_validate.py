@@ -1650,6 +1650,9 @@ def check_mastercoin_transaction(t, index=-1):
                             mark_tx_invalid(tx_hash, 'TMSC/MSC are valid ecosystems only or MSC ecosystem before non-live block')
                             return False
 
+
+
+
                         if transaction_type == transaction_type_dict['0033']:
                             fundraiser = True
                         else:
@@ -1675,11 +1678,22 @@ def check_mastercoin_transaction(t, index=-1):
                                 return False
 
                         #used later in validation
+
                         property_type = t['property_type']
+                        if int(property_type) > 2:
+                            mark_tx_invalid(tx_hash, 'Property type > 2 not implemented')
+                            return False
+
+                        #Add this test soon
+                        prop_name = t['propertyName']
+                        #if prop_name = "":
+                        #    mark_tx_invalid(tx_hash, 'Property name is null')
+                        #    return False
+
                         prev_prop_id = int(t['previous_property_id'])
                         #prop_cat = t['propertyCategory']
                         #prop_subcat = t['propertySubcategory']
-                        prop_name = t['propertyName']
+
                         #prop_url = t['propertyUrl']
                         #prop_data = t['propertyData']
 
