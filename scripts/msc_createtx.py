@@ -118,7 +118,7 @@ if is_pubkey_valid(PUBLIC_KEY):
     pass
 else:
     #check if we are broadcasting and try to generate pubkey
-    if BROADCAST == 1:
+    if BROADCAST >= 1:
 	PUBLIC_KEY = commands.getoutput('echo '+PRIVATE_KEY+' | sx pubkey')
 	if is_pubkey_valid(PUBLIC_KEY):
 	    pass
