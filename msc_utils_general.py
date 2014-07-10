@@ -109,9 +109,10 @@ def format_time_from_epoch(epoch, short=False):
 def get_git_details(directory="~/mastercoin-tools"):
     repo = git.Repo(directory)
     assert repo.bare == False
-    head_commit=repo.head.commit
-    timestamp=format_time_from_epoch(int(head_commit.authored_date), True)
-    return(head_commit.hexsha,timestamp)
+    #head_commit=repo.head.commit
+    #timestamp=format_time_from_epoch(int(head_commit.authored_date), True)
+    #return(head_commit.hexsha,timestamp)
+    return("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX","XXXXXXXX")
 
 def archive_repo(directory="~/mastercoin-tools"):
     (commit_hexsha, timestamp)=get_git_details( directory )

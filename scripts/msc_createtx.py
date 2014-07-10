@@ -118,7 +118,7 @@ if is_pubkey_valid(PUBLIC_KEY):
     pass
 else:
     #check if we are broadcasting and try to generate pubkey
-    if BROADCAST == 1:
+    if BROADCAST >= 1:
 	PUBLIC_KEY = commands.getoutput('echo '+PRIVATE_KEY+' | sx pubkey')
 	if is_pubkey_valid(PUBLIC_KEY):
 	    pass
@@ -156,7 +156,10 @@ sequence_number = 1    #packet number
 #currency_id = 2        #MSC=1, TMSC=2
 currency_id = int(CID)
 #amount = int(float(listOptions['msc_send_amt'])*1e8)  #maran's impl used float??
-amount = int(decimal.Decimal(TOAMOUNT)*decimal.Decimal("1e8"))
+if PTYPE == 2:
+    amount = int(decimal.Decimal(TOAMOUNT)*decimal.Decimal("1e8"))
+else:
+    amount = int(TOAMOUNT)
 
 cleartext_packet = ( 
         (hex(sequence_number)[2:].rjust(2,"0") + 
