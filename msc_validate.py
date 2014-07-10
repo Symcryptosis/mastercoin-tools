@@ -192,7 +192,7 @@ def check_alarm(t, last_block, current_block):
                             # reserved moves to balance.
 
                             # but only if sell tx did not get upated
-                            if not sell_tx_updated:
+                            if not sell_tx_updated or current_sell_tx['action'] == '02':
                                 update_addr_dict(a['to_address'], True, a['currency_str'], reserved=-to_satoshi(amount_accepted), \
                                     balance=to_satoshi(amount_accepted))
                             else:
@@ -1800,6 +1800,14 @@ def validate():
     # go over all tx
     for t in sorted_tx_list:
 
+        #DEBUG add lines here to get state BEFORE processing block 
+
+        #if t['tx_hash'] == 'ae9c52320ab59cf633c23087c7efba9b870ea1fac53037951f4c9bcbde1dd3e5':
+        #    print 'before ae9c52320ab59cf633c23087c7efba9b870ea1fac53037951f4c9bcbde1dd3e5'
+        #    print 'balalnce', addr_dict['1BKpa19m5Xy9SvSzC5djPWtCfbuynSDwmb']['Test Mastercoin']['balance']
+        #    print 'reserved', addr_dict['1BKpa19m5Xy9SvSzC5djPWtCfbuynSDwmb']['Test Mastercoin']['reserved']
+        #    exit()
+
         # get current block from first tx
         try:
             current_block=int(t['block'])
@@ -1835,6 +1843,8 @@ def validate():
 
         except OSError:
             error('error on tx '+t['tx_hash'])
+
+       #DEBUG add lines above here to get state AFTER processing block 
 
     info('updating.. offers')
     # create json for offers
