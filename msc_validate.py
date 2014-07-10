@@ -1650,9 +1650,6 @@ def check_mastercoin_transaction(t, index=-1):
                             mark_tx_invalid(tx_hash, 'TMSC/MSC are valid ecosystems only or MSC ecosystem before non-live block')
                             return False
 
-
-
-
                         if transaction_type == transaction_type_dict['0033']:
                             fundraiser = True
                         else:
@@ -1690,6 +1687,11 @@ def check_mastercoin_transaction(t, index=-1):
                         #    mark_tx_invalid(tx_hash, 'Property name is null')
                         #    return False
 
+                        num_prop = t['numberOfProperties']
+                        if int(num_prop) >= 9223372036854775807:
+                            mark_tx_invalid(tx_hash, 'Number of properties too large')
+                            return False
+
                         prev_prop_id = int(t['previous_property_id'])
                         #prop_cat = t['propertyCategory']
                         #prop_subcat = t['propertySubcategory']
@@ -1697,7 +1699,7 @@ def check_mastercoin_transaction(t, index=-1):
                         #prop_url = t['propertyUrl']
                         #prop_data = t['propertyData']
 
-                        num_prop = t['numberOfProperties']
+
 
                         #earlybird_bonus = t['earlybirdBonus']
                         #percentage_for_issuer = t['percentageForIssuer']
