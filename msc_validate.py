@@ -1675,15 +1675,31 @@ def check_mastercoin_transaction(t, index=-1):
                                 return False
 
                         #used later in validation
+
                         property_type = t['property_type']
+                        if int(property_type) > 2:
+                            mark_tx_invalid(tx_hash, 'Property type > 2 not implemented')
+                            return False
+
+                        #Add this test soon
+                        prop_name = t['propertyName']
+                        #if prop_name = "":
+                        #    mark_tx_invalid(tx_hash, 'Property name is null')
+                        #    return False
+
+                        num_prop = t['numberOfProperties']
+                        if int(num_prop) >= 9223372036854775807:
+                            mark_tx_invalid(tx_hash, 'Number of properties too large')
+                            return False
+
                         prev_prop_id = int(t['previous_property_id'])
                         #prop_cat = t['propertyCategory']
                         #prop_subcat = t['propertySubcategory']
-                        prop_name = t['propertyName']
+
                         #prop_url = t['propertyUrl']
                         #prop_data = t['propertyData']
 
-                        num_prop = t['numberOfProperties']
+
 
                         #earlybird_bonus = t['earlybirdBonus']
                         #percentage_for_issuer = t['percentageForIssuer']
