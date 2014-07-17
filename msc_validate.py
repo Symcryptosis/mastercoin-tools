@@ -1677,8 +1677,8 @@ def check_mastercoin_transaction(t, index=-1):
                         #used later in validation
 
                         property_type = t['property_type']
-                        if int(property_type) > 2:
-                            mark_tx_invalid(tx_hash, 'Property type > 2 not implemented')
+                        if int(property_type) > 2 or int(property_type) <= 0:
+                            mark_tx_invalid(tx_hash, 'Property type > 2  and property type <= 0 not implemented')
                             return False
 
                         #Add this test soon
