@@ -1661,6 +1661,9 @@ def check_mastercoin_transaction(t, index=-1):
                                 return False
 
                             curr_desired = t['currencyIdentifierDesired']
+                            if int(curr_desired) == 0:
+                                mark_tx_invalid(tx_hash, 'Bitcoin cannot be the currency identifier desired')
+                                return False 
                             try:
                                 if int(curr_desired) > 3:
                                     valid_curr_desired=coins_dict.keys()[coins_dict.values().index(curr_desired)]
