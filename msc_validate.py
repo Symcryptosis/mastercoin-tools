@@ -1171,10 +1171,11 @@ def check_mastercoin_transaction(t, index=-1):
                             active_fundraiser = fundraisers_dict[to_addr]
                             fundraiser_hash = active_fundraiser['tx_hash']
 
-                            c_t = coins_dict.keys()[coins_dict.values().index(str(t['currencyId']))]  #coin type for current tx
-                            #if divisible units are funding indivisible, convert units
-                            if int(active_fundraiser['property_type']) == 2 and int(property_type_dict[c_t]) == 1:
-                                amount_transfer = amount_transfer * 1e8
+                            if int(t['currencyId']) > 2:
+                                c_t = coins_dict.keys()[coins_dict.values().index(str(t['currencyId']))]  #coin type for current tx
+                                #if divisible units are funding indivisible, convert units
+                                if int(active_fundraiser['property_type']) == 2 and int(property_type_dict[c_t]) == 1:
+                                    amount_transfer = amount_transfer * 1e8
 
                             #bonus calculation
 
