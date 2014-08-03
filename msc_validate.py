@@ -1113,7 +1113,7 @@ def check_mastercoin_transaction(t, index=-1):
             debug_address(to_addr,c, 'before simplesend')
 
             #check active_raisers dict if to_addr has open fundraiser
-            if to_addr in fundraisers_dict.keys() and int(fundraisers_dict[to_addr]['currencyIdentifierDesired'],16) == int(t['currencyId'],16):
+            if to_addr in fundraisers_dict.keys() and int(fundraisers_dict[to_addr]['currencyIdentifierDesired']) == int(t['currencyId'],16):
                 transaction_activeFundraiser=True
                 info(['active fundraiser send detected',t])
             else:
@@ -1156,13 +1156,13 @@ def check_mastercoin_transaction(t, index=-1):
                     mark_tx_invalid(tx_hash, 'balance too low')
                     return False
                 else:
-                    if transaction_smartProperty == True:
+                    if transaction_smartProperty == True and transaction_activeFundraiser == False: #simple send of smart property (not investment)
                         # update to_addr
                         update_addr_dict(to_addr, True,'Smart Property', c, balance=amount_transfer, received=amount_transfer, in_tx=t)
                         # update from_addr
                         update_addr_dict(from_addr, True,'Smart Property', c, balance=-amount_transfer, sent=amount_transfer, out_tx=t)
                     else:
-                        if transaction_activeFundraiser == True:
+                        if transaction_activeFundraiser == True: #investment send
                             # update the balances for the main currency
                             update_addr_dict(to_addr, True, c, balance=amount_transfer, received=amount_transfer, in_tx=t)
                             update_addr_dict(from_addr, True, c, balance=-amount_transfer, sent=amount_transfer, out_tx=t)
@@ -1172,9 +1172,8 @@ def check_mastercoin_transaction(t, index=-1):
                             fundraiser_hash = active_fundraiser['tx_hash']
 
                             if int(t['currencyId']) > 2:
-                                c_t = coins_dict.keys()[coins_dict.values().index(str(t['currencyId']))]  #coin type for current tx
                                 #if divisible units are funding indivisible, convert units
-                                if int(active_fundraiser['property_type']) == 2 and int(property_type_dict[c_t]) == 1:
+                                if int(active_fundraiser['property_type']) == 2 and int(property_type_dict[c]) == 1:
                                     amount_transfer = amount_transfer * 1e8
 
                             #bonus calculation
