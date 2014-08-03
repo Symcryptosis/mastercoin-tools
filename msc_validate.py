@@ -28,7 +28,7 @@ tx_dict={}
 fundraisers_dict={}
 fundraisers_metadata_dict={}
 #create dict of divisible/non smart_properties
-property_type_dict={'Bitcoin': 2, 'Mastercoin': 2, 'Test Mastercoin': 2}
+property_type_dict={ 'Bitcoin': '0002', 'Mastercoin': '0002', 'Test Mastercoin': '0002' }
 
 # prepare lists for mastercoin and test
 sorted_currency_tx_list={'Mastercoin':[],'Test Mastercoin':[]} # list 0 for mastercoins, list 1 for test mastercoins
