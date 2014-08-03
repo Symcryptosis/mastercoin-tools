@@ -1164,8 +1164,12 @@ def check_mastercoin_transaction(t, index=-1):
                     else:
                         if transaction_activeFundraiser == True: #investment send
                             # update the balances for the main currency
-                            update_addr_dict(to_addr, True, c, balance=amount_transfer, received=amount_transfer, in_tx=t)
-                            update_addr_dict(from_addr, True, c, balance=-amount_transfer, sent=amount_transfer, out_tx=t)
+                            if transaction_smartProperty:
+                                update_addr_dict(to_addr, True,'Smart Property', c, balance=amount_transfer, received=amount_transfer, in_tx=t)
+                                update_addr_dict(from_addr, True,'Smart Property', c, balance=-amount_transfer, sent=amount_transfer, out_tx=t)
+                            else:
+                                update_addr_dict(to_addr, True, c, balance=amount_transfer, received=amount_transfer, in_tx=t)
+                                update_addr_dict(from_addr, True, c, balance=-amount_transfer, sent=amount_transfer, out_tx=t)
                             
                             #update the balances for the smart property being funded
                             active_fundraiser = fundraisers_dict[to_addr]
