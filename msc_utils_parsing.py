@@ -91,12 +91,12 @@ def parse_data_script(data_script):
     parse_dict['block_time_limit']=data_script[52:54]
     return parse_dict
 
-def parse_2nd_data_script(data_script):
+def parse_2nd_data_script(fee_req_p1,data_script):
     parse_dict={}
     if len(data_script)<42:
         info('invalid data script '+data_script.encode('hex_codec'))
         return parse_dict
-    parse_dict['fee_required']=data_script[4:10]
+    parse_dict['fee_required']=fee_req_p1 + data_script[4:10]
     parse_dict['action']=data_script[10:12]
     parse_dict['should_be_zeros']=data_script[12:54]
     try:
@@ -446,7 +446,7 @@ def parse_multisig(tx, tx_hash='unknown'):
                         parse_dict['formatted_block_time_limit']= str(int(data_dict['block_time_limit'],16))
 
                         if len(dataHex_deobfuscated_list)>1: # currently true only for Sell offer (?)
-                            data_dict2=parse_2nd_data_script(dataHex_deobfuscated_list[1])
+                            data_dict2=parse_2nd_data_script(dataHex_deobfuscated_list[0][54:-2],dataHex_deobfuscated_list[1])
 
                             # verify positive sell offer amount
                             if amount == 0: # this is allowed only on Cancel action
